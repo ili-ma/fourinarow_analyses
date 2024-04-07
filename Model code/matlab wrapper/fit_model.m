@@ -19,14 +19,11 @@ c = 50;
 Ntrials = size(data,1);
 L = zeros(Ntrials,10);
 
-% Apply a lesion to one or more of the parameters.
-for idx = 1:numel(lesion_index)
-	x0(lesion_index(idx))  = lesion_value(idx);
-	lb(lesion_index(idx))  = lesion_value(idx);
-	ub(lesion_index(idx))  = lesion_value(idx);
-	plb(lesion_index(idx)) = lesion_value(idx);
-	pub(lesion_index(idx)) = lesion_value(idx);
-end
+x0  = apply_lesion(x0,  lesion_index, lesion_value);
+lb  = apply_lesion(lb,  lesion_index, lesion_value);
+ub  = apply_lesion(ub,  lesion_index, lesion_value);
+plb = apply_lesion(plb, lesion_index, lesion_value);
+pub = apply_lesion(pub, lesion_index, lesion_value);
 
 data
 
@@ -38,7 +35,7 @@ times = generate_times(mean(L,2),c);
 
 times'
 
-fun=@(x) sum(estimate_loglik_ibs(data,x,times));
+fun=@(x) sum(estimate_loglik_ibs(data, apply_lesion(x, lesion_index, lesion_value), times));
 
 params = bads(fun,x0,lb,ub,plb,pub,[],badsopts);
 
@@ -48,4 +45,11 @@ for i=1:10
 	loglik(i) = fun(params);
 end
 
+end
+
+function x = apply_lesion(x, lesion_index, lesion_value)
+	% Apply a lesion to one or more of the parameters.
+	for idx = 1:numel(lesion_index)
+		x(lesion_index(idx)) = lesion_value(idx);
+	end
 end
