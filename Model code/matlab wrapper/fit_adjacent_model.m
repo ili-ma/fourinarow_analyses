@@ -44,7 +44,7 @@ function nll = computer_nll(preprocessed, weight)
 	nll = sum(-log(choice_values ./ (preprocessed(:, 1) + weighted_adjacent)));
 end
 
-function board = decode_board(encoded)
+function board = decode_int_board(encoded)
 	% Create a matrix that has 1's where pieces are and 0's otherwise.
 	board = zeros(9, 4);
 	index = 1;
@@ -64,8 +64,8 @@ function preprocessed = preprocess(data)
 	preprocessed = zeros(size(data, 1), 3);
 	for row = 1:size(data, 1)
 		player_color = data{row, 3}; % 0 or 1
-		player_pieces = decode_board(data{row, 1 + player_color});
-		opponent_pieces = decode_board(data{row, 2 - player_color});
+		player_pieces = decode_int_board(data{row, 1 + player_color});
+		opponent_pieces = decode_int_board(data{row, 2 - player_color});
 
 		occupied = player_pieces + opponent_pieces;
 		n_free = numel(occupied) - sum(occupied, 'all');
