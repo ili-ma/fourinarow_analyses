@@ -3,13 +3,15 @@ import json
 import numpy as np
 import os
 import pandas as pd
+import re
 import subprocess
 from functools import reduce
 from numpy.typing import NDArray
 from typing import Any, Dict, List
+from statistics import mean
 
 # Use this to load psiturk/mturk trialdata csv files. Parse the output with get_parsed_data().
-def load_data(filename, verbose = True):
+def load_data(filename: str, verbose = True) -> Dict[str, List]:
     df = pd.read_csv(filename, header=None, names=['participant_id','i','ts','info'])
     result = {}
     for participant_id in df['participant_id'].unique():
@@ -39,6 +41,31 @@ def load_tabular(filename_glob: str, verbose = True) -> List[pd.DataFrame]:
         if verbose:
             print(f"Loaded {len(games) - pre_length} games from {filename}")
     return games
+
+# input should be a folder with fitted data
+# Each subject will have its own folder under the provided folder
+# and the subject folders must conatain lltest1.csv.
+def read_subject_nlls(fit_folder):
+    subject_nlls = {}
+    for subject_id in os.listdir(fit_folder):
+        subdir = os.path.join(fit_folder, subject_id)
+        if not os.path.isdir(subdir):
+            # We're looking for directories only. Skip everything else
+            continue
+        fold_nlls = []
+        # Get nlls for all the folds
+        for filename in os.listdir(subdir):
+            filepath = os.path.join(subdir, filename)
+            match = re.match("lltest\\d+\\.csv", filename)
+            if not os.path.isfile(filepath) or not match:
+                # Skip any file that doesn't fit the pattern
+                continue
+            for line in open(filepath):
+                fold_nlls.append(float(line))
+        # Use the average nll over all moves
+        if len(fold_nlls) > 0:
+            subject_nlls[subject_id.split("-")[0]] = mean(fold_nlls)
+    return subject_nlls
 
 def decode_int_board(encoded: int) -> NDArray[np.bool_]:
     # Create a matrix that has True where pieces are and False otherwise.
@@ -90,6 +117,9 @@ def is_diagonal_down_four_in_a_row(board: NDArray[np.bool_]) -> bool:
                 return True
     return False
 
+def get_unparsed_game_starts(data_dict: Dict[str, Any], user: str) -> List[str]:
+    return [str(event["event_info"]) for event in data_dict[user] if event["event_type"] == "start game"]
+
 def get_parsed_outcome(game: List[Dict[str, Any]]) -> int:
     last_state = game[-1]
     player_is_black = last_state["user_color"] == "black"
@@ -126,12 +156,15 @@ def get_events_with_type(f, event_type):
     return [e for e in f if e['event_type'].replace('_',' ') == event_type.replace('_', ' ')]
 
 # Make data more accessible. Pratice games should normally not be included in anything.
-def get_parsed_data(data, user, include_practice, expected_games = 35):
+def get_parsed_data(user_data: List[Dict[str, Any]], user: str, include_practice: bool, expected_games = 35) -> List[List[Dict[str, Any]]]:
+    # Returns a list of games, where each game is a list of moves. A move is a dictionary where
+    # bp and wp make up the context in which the user made their move.
+    # User_color and tile specify the selected move.
     result = []
     game = []
     game_nr = -1
     include_game = True
-    for e in data:
+    for e in user_data:
         if e["event_type"] == "start game":
             if game:
                 if include_game:
