@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <string>
 
 pattern::pattern(uint64 p,uint64 pe,int n_val,double* w_act,double* w_pass,double* delta,int i){
   pieces=p;
