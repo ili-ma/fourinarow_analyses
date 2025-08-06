@@ -1,6 +1,6 @@
 from typing import *
 
-# This script load trialdata and splits it into two files,
+# This script loads trialdata and splits it into two files,
 # each containing half of the data per subject. One file will have
 # each subject's first 18 games (0 to 17) and the other will have
 # the last 17 games (18 to 34)

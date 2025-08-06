@@ -120,6 +120,13 @@ def is_diagonal_down_four_in_a_row(board: NDArray[np.bool_]) -> bool:
 def get_unparsed_game_starts(data_dict: Dict[str, Any], user: str) -> List[str]:
     return [str(event["event_info"]) for event in data_dict[user] if event["event_type"] == "start game"]
 
+def get_parsed_game_starts(data_dict: Dict[str, Any], user: str, filter_practice=None) -> List[Dict[str, Any]]:
+    starts = get_events_with_type(data_dict[user], "start game") # Get raw starts
+    starts = [e["event_info"] for e in starts] # extract even info
+    if filter_practice != None:
+        starts = [e for e in starts if e["is_practice"] == filter_practice]
+    return starts
+
 def get_parsed_outcome(game: List[Dict[str, Any]]) -> int:
     last_state = game[-1]
     player_is_black = last_state["user_color"] == "black"
@@ -250,9 +257,11 @@ import matplotlib.colors as colors
 
 cm = colors.LinearSegmentedColormap.from_list('gray_gold_map', [colors.to_rgb('darkgray'),
                                                                 colors.to_rgb('gold')], N=100)
-def show_board(bp,wp,response,color,save=False):
-    fig = plt.figure(figsize=[9,4])
-    ax = fig.add_subplot(111,aspect='equal')
+def draw_board(bp, wp, response, color, ax, title=None):
+    ax.add_patch(patches.Rectangle(
+        (-0.5, -0.5), 9, 4, linewidth=0,
+        facecolor=colors.to_rgb('darkgray')
+    ))
     ax.vlines(np.arange(-0.5,9.5,1),-0.5,3.5)
     ax.hlines(np.arange(-0.5,4.5,1),-0.5,8.5)
     
@@ -265,15 +274,22 @@ def show_board(bp,wp,response,color,save=False):
     for p in white_pieces:
         circ = patches.Circle((p%9,p//9),0.33,color="white",fill=True)
         circ = ax.add_patch(circ)
-    for p in [response]:
-        circ = patches.Circle((p%9,p//9),0.33,color=color,fill=False)
+    if response != None:
+        circ = patches.Circle((response%9,response//9),0.33,color=color,fill=False)
         circ = ax.add_patch(circ)
-    plt.imshow(np.zeros(shape=[4,9]), cmap=cm, 
-               interpolation='nearest',origin='lower',vmin=0,vmax=0.2)
-    ax.axis('off')
+    ax.set_axis_off()
+    if title:
+        ax.text(-0.5, 3.8, title, fontsize=16, color="darkred", ha="left", va="center")
+
+def get_ax():
+    fig = plt.figure(figsize=[9,4])
+    ax = fig.add_subplot(111,aspect='equal')
     fig.tight_layout()
-    #if save:
-    #    fig.savefig('C:/Users/svo/Documents/fmri/Boards/board_' + bp + '_' + wp + '.png')
+    return ax
+
+def show_board(bp, wp, response, color):
+    ax = get_ax()
+    draw_board(bp,wp,response,color,ax)
     plt.show()
     
 def create_bayeselo_input(results,name):
